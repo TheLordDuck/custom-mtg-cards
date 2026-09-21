@@ -8,7 +8,7 @@ For each card name in `src/entry.txt`, the pipeline:
 
 1. **Fetches card data** from the [Scryfall API](https://scryfall.com/docs/api) (`fetchScryfall`).
 2. **Downloads and processes the card art** from the Scryfall image URI (`downloadProcessImage`).
-3. **Scrapes a rendered text layer** (name, mana cost, type line, rules text) from [Card Conjurer](https://cardconjurer.com/) (`scrapeCardConjurer`).
+3. **Scrapes a rendered text layer** (name, mana cost, type line, rules text) from [Card Conjurer](https://cardconjurer.app/) (`scrapeCardConjurer`).
 4. **Selects a template** based on the card's type line — creature or general (`selectTemplateCard`).
 5. **Assembles the final card** by compositing the art, text, and template with [`sharp`](https://sharp.pixelplumbing.com/) (`assembleCard`).
 
