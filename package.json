@@ -1,25 +1,30 @@
 {
-  "name": "test",
+  "name": "custom-mtg-cards",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Generate custom Magic: The Gathering card images from Scryfall and Card Conjurer",
+  "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon src/index.ts",
+    "web": "ts-node src/server/index.ts",
     "build": "tsc",
+    "templates": "ts-node scripts/templates/renderFrames.ts .templates-work && python scripts/templates/trace.py .templates-work src/templates",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/sharp": "^0.32.0",
-    "axios": "^1.12.2",
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.19.2",
     "nodemon": "^3.1.9",
-    "playwright": "^1.52.0",
-    "sharp": "^0.34.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   },
   "dependencies": {
-    "dotenv": "^16.5.0"
-  }
+    "axios": "^1.12.2",
+    "express": "^5.3.0",
+    "pdf-lib": "^1.17.1",
+    "playwright": "^1.64.0",
+    "sharp": "^0.34.4"
+  },
+  "packageManager": "pnpm@11.25.0"
 }

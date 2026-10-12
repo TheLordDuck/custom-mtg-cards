@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Custom MTG Cards</title>
+<style>
+  :root {
+    --bg: #f4f2ee;
+    --panel: #ffffff;
+    --ink: #1d1b19;
+    --muted: #6d6863;
+    --line: #dcd7d0;
+    --accent: #2f5d50;
+    --accent-ink: #ffffff;
+    --error: #a23b2a;
+    --ok: #2f6b3c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { padding: 20px 24px 8px; }
+  header h1 { margin: 0; font-size: 22px; }
+  header p { margin: 4px 0 0; color: var(--muted); }
+  main { display: grid; grid-template-columns: 340px 1fr; gap: 20px; padding: 16px 24px 32px; align-items: start; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; padding: 12px 16px 24px; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .panel + .panel { margin-top: 16px; }
+  .panel h2 { margin: 0 0 12px; font-size: 15px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  textarea { width: 100%; min-height: 220px; resize: vertical; padding: 10px; border: 1px solid var(--line); border-radius: 8px; font: 14px/1.5 ui-monospace, Consolas, monospace; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+  .check { display: flex; gap: 8px; align-items: center; color: var(--ink); font-size: 14px; margin: 10px 0; }
+  select, input[type=number] { width: 100%; padding: 7px 8px; border: 1px solid var(--line); border-radius: 6px; font: inherit; background: #fff; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+  button { font: inherit; border: 0; border-radius: 8px; padding: 9px 14px; cursor: pointer; background: var(--accent); color: var(--accent-ink); }
+  button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .hint { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
+  .progress { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin: 10px 0; }
+  .progress > div { height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+  #log { list-style: none; margin: 0; padding: 0; max-height: 160px; overflow: auto; font-size: 13px; }
+  #log li { padding: 2px 0; }
+  #log .error { color: var(--error); }
+  #log .ok { color: var(--ok); }
+  .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+  .card img { width: 100%; border-radius: 6px; background: #eee; aspect-ratio: 63 / 88; object-fit: contain; }
+  .card .name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card .row { display: flex; gap: 8px; align-items: center; }
+  .card .row input { width: 64px; }
+  .card .row a { margin-left: auto; color: var(--accent); font-size: 13px; }
+  .empty { color: var(--muted); padding: 40px 0; text-align: center; }
+  .summary { font-size: 13px; color: var(--muted); margin-top: 10px; }
+  .summary.bad { color: var(--error); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Custom MTG Cards</h1>
+  <p>Pega tu lista, genera las cartas y descárgalas una a una o en un PDF listo para imprimir.</p>
+</header>
+<main>
+  <div>
+    <section class="panel">
+      <h2>Lista de cartas</h2>
+      <textarea id="list" spellcheck="false" placeholder="4 Lightning Bolt&#10;2x Delver of Secrets&#10;Fire // Ice"></textarea>
+      <p class="hint">Una carta por línea. Puedes indicar copias: <code>4 Lightning Bolt</code> o <code>4x Lightning Bolt</code>.</p>
+      <label class="check"><input type="checkbox" id="force"> Regenerar aunque ya existan</label>
+      <div class="actions">
+        <button id="generate">Generar cartas</button>
+      </div>
+      <div id="status" hidden>
+        <div class="progress"><div id="bar"></div></div>
+        <ul id="log"></ul>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>PDF para imprimir</h2>
+      <div class="grid2">
+        <div>
+          <label for="paper">Papel</label>
+          <select id="paper">
+            <option value="a4">A4</option>
+            <option value="a3">A3</option>
+            <option value="a5">A5</option>
+            <option value="letter">Letter</option>
+            <option value="legal">Legal</option>
+            <option value="tabloid">Tabloid</option>
+          </select>
+        </div>
+        <div>
+          <label for="orientation">Orientación</label>
+          <select id="orientation">
+            <option value="portrait">Vertical</option>
+            <option value="landscape">Horizontal</option>
+          </select>
+        </div>
+        <div>
+          <label for="scale">Zoom (%)</label>
+          <input type="number" id="scale" value="100" min="10" max="400" step="1">
+        </div>
+        <div>
+          <label for="dpi">Resolución</label>
+          <select id="dpi">
+            <option value="300">300 ppp</option>
+            <option value="600">600 ppp</option>
+            <option value="150">150 ppp (ligero)</option>
+          </select>
+        </div>
+        <div>
+          <label for="margin">Margen (mm)</label>
+          <input type="number" id="margin" value="5" min="0" max="100" step="0.5">
+        </div>
+        <div>
+          <label for="gap">Separación (mm)</label>
+          <input type="number" id="gap" value="0" min="0" max="50" step="0.5">
+        </div>
+        <div style="grid-column: 1 / -1">
+          <label for="guides">Guías de corte</label>
+          <select id="guides">
+            <option value="corners">Marcas en las esquinas</option>
+            <option value="outline">Contorno de cada carta</option>
+            <option value="none">Sin guías</option>
+          </select>
+        </div>
+      </div>
+      <p class="summary" id="layout"></p>
+      <div class="actions">
+        <button id="pdf" disabled>Descargar PDF</button>
+      </div>
+      <p class="hint">100 % es el tamaño real de una carta (63 × 88 mm). Las copias de cada carta se ajustan en la galería.</p>
+    </section>
+  </div>
+
+  <section>
+    <div class="actions" style="margin: 0 0 12px">
+      <button class="secondary" id="downloadAll" disabled>Descargar todas las imágenes</button>
+    </div>
+    <div class="gallery" id="gallery"></div>
+    <p class="empty" id="empty">Las cartas generadas aparecerán aquí.</p>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const PAPERS = { a5: [148, 210], a4: [210, 297], a3: [297, 420], letter: [215.9, 279.4], legal: [215.9, 355.6], tabloid: [279.4, 431.8] };
+
+// Per-viewer conveniences: remember the list and the PDF settings
+const store = {
+  get(key) { try { return localStorage.getItem(key); } catch { return null; } },
+  set(key, value) { try { localStorage.setItem(key, value); } catch { } },
+};
+const pdfFields = ["paper", "orientation", "scale", "dpi", "margin", "gap", "guides"];
+$("list").value = store.get("list") ?? "";
+$("list").addEventListener("input", () => store.set("list", $("list").value));
+for (const id of pdfFields) {
+  const saved = store.get("pdf." + id);
+  if (saved !== null) $(id).value = saved;
+  $(id).addEventListener("input", () => { store.set("pdf." + id, $(id).value); updateLayout(); });
+}
+
+// Generated images: { name, url, copies }
+let cards = [];
+
+function pdfOptions() {
+  return {
+    paper: $("paper").value,
+    orientation: $("orientation").value,
+    scale: Number($("scale").value),
+    dpi: Number($("dpi").value),
+    marginMm: Number($("margin").value),
+    gapMm: Number($("gap").value),
+    cutGuides: $("guides").value,
+  };
+}
+
+// Same maths as the server, to show how the cards will fit
+function updateLayout() {
+  const o = pdfOptions();
+  let [w, h] = PAPERS[o.paper];
+  if (o.orientation === "landscape") [w, h] = [h, w];
+  const cw = 63 * o.scale / 100, ch = 88 * o.scale / 100;
+  const cols = Math.max(0, Math.floor((w - 2 * o.marginMm + o.gapMm) / (cw + o.gapMm)));
+  const rows = Math.max(0, Math.floor((h - 2 * o.marginMm + o.gapMm) / (ch + o.gapMm)));
+  const total = cards.reduce((sum, c) => sum + c.copies, 0);
+  const summary = $("layout");
+  if (cols === 0 || rows === 0) {
+    summary.textContent = "Con este zoom y márgenes no cabe ninguna carta en la página.";
+    summary.classList.add("bad");
+  } else {
+    const pages = total ? Math.ceil(total / (cols * rows)) : 0;
+    summary.textContent = `${cols} × ${rows} = ${cols * rows} cartas por página · carta de ${cw.toFixed(1)} × ${ch.toFixed(1)} mm` +
+      (total ? ` · ${total} copias en ${pages} página${pages === 1 ? "" : "s"}` : "");
+    summary.classList.remove("bad");
+  }
+  $("pdf").disabled = !total || cols === 0 || rows === 0;
+}
+
+function renderGallery() {
+  const gallery = $("gallery");
+  gallery.replaceChildren(...cards.map((card, i) => {
+    const el = document.createElement("article");
+    el.className = "card";
+    const img = document.createElement("img");
+    img.src = card.url + "?v=" + card.version;
+    img.alt = card.name;
+    img.loading = "lazy";
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = card.name;
+    name.title = card.name;
+    const row = document.createElement("div");
+    row.className = "row";
+    const copies = document.createElement("input");
+    copies.type = "number"; copies.min = "0"; copies.max = "100"; copies.value = card.copies;
+    copies.title = "Copias en el PDF";
+    copies.addEventListener("input", () => { cards[i].copies = Math.max(0, Number(copies.value) || 0); updateLayout(); });
+    const label = document.createElement("span");
+    label.textContent = "copias";
+    label.style.cssText = "font-size:13px;color:var(--muted)";
+    const link = document.createElement("a");
+    link.href = card.url;
+    link.download = card.name.replace(/\s*\/\/\s*/g, " - ") + ".png";
+    link.textContent = "Descargar";
+    row.append(copies, label, link);
+    el.append(img, name, row);
+    return el;
+  }));
+  $("empty").hidden = cards.length > 0;
+  $("downloadAll").disabled = cards.length === 0;
+  updateLayout();
+}
+
+function log(text, kind) {
+  const li = document.createElement("li");
+  li.textContent = text;
+  if (kind) li.className = kind;
+  $("log").append(li);
+  li.scrollIntoView({ block: "nearest" });
+}
+
+$("generate").addEventListener("click", async () => {
+  $("generate").disabled = true;
+  $("status").hidden = false;
+  $("log").replaceChildren();
+  $("bar").style.width = "0";
+  cards = [];
+  renderGallery();
+
+  let response;
+  try {
+    response = await fetch("/api/jobs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ list: $("list").value, force: $("force").checked }),
+    });
+  } catch {
+    log("No se pudo contactar con el servidor.", "error");
+    $("generate").disabled = false;
+    return;
+  }
+  const data = await response.json();
+  if (!response.ok) {
+    log(data.error || "Error al crear el trabajo.", "error");
+    $("generate").disabled = false;
+    return;
+  }
+
+  const entries = data.entries;
+  const version = Date.now();
+  const source = new EventSource(`/api/jobs/${data.id}/events`);
+  source.onmessage = message => {
+    const event = JSON.parse(message.data);
+    if (event.type === "queued" && event.position > 0) {
+      log(`En cola: hay ${event.position} trabajo(s) antes que este.`);
+    } else if (event.type === "start") {
+      $("bar").style.width = `${event.index / event.total * 100}%`;
+      log(`(${event.index + 1}/${event.total}) ${event.entry.name}…`);
+    } else if (event.type === "image") {
+      cards.push({ name: event.name, url: event.url, copies: entries[event.index]?.count ?? 1, version });
+      renderGallery();
+      log(`${event.name} ${event.cached ? "(ya existía)" : "generada"}`, "ok");
+    } else if (event.type === "error") {
+      log(`${event.entry.name || "Error"}: ${event.message}`, "error");
+    } else if (event.type === "done") {
+      $("bar").style.width = "100%";
+      log(`Terminado: ${cards.length} imagen(es).`);
+      source.close();
+      $("generate").disabled = false;
+    }
+  };
+  source.onerror = () => {
+    if (source.readyState === EventSource.CLOSED) return;
+    log("Se perdió la conexión con el servidor.", "error");
+    source.close();
+    $("generate").disabled = false;
+  };
+});
+
+$("pdf").addEventListener("click", async () => {
+  $("pdf").disabled = true;
+  $("pdf").textContent = "Generando PDF…";
+  try {
+    const response = await fetch("/api/pdf", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...pdfOptions(), cards: cards.map(c => ({ url: c.url, copies: c.copies })) }),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      alert(data.error || "No se pudo generar el PDF.");
+      return;
+    }
+    const blob = await response.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "cartas.pdf";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  } finally {
+    $("pdf").textContent = "Descargar PDF";
+    updateLayout();
+  }
+});
+
+$("downloadAll").addEventListener("click", async () => {
+  for (const link of document.querySelectorAll(".card a[download]")) {
+    link.click();
+    await new Promise(r => setTimeout(r, 300));
+  }
+});
+
+renderGallery();
+</script>
+</body>
+</html>

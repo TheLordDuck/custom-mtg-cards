@@ -1,35 +1,20 @@
 import readCardsFile from './utils/readCardsFile';
-import downloadProcessImage from './utils/downloadProcessImage';
-import scrapeCardConjurer from "./utils/scrapeCardConjurer";
-import fetchScryfall from "./utils/fetchScryfall";
-import selectTemplateCard from './utils/selectTemplateCard';
-import assembleCard from './utils/assembleCard';
+import { generateCards } from './pipeline';
+
+const OUTPUT_DIR = './src/output';
 
 const main = async () => {
-    const items = await readCardsFile();
+    // An alternative card list can be passed as the first argument
+    const entries = await readCardsFile(process.argv[2]);
 
-    items.forEach(async item => {
-        // Fetch scryfall data of card
-        const card = await fetchScryfall(item);
+    const results = await generateCards(entries, { outputDir: OUTPUT_DIR, headless: false, force: true });
 
-        // Fetch and process the image of the uri from scryfall
-        const imageArt = await downloadProcessImage(card.image_uris.art_crop);
-
-        // Scrape Cardconjurer to get the text image of the card
-        const scrapeCard = await scrapeCardConjurer(card);
-
-        // Select template based on the card type
-        const cardImage = await selectTemplateCard(card.type_line);
-
-        // Assemble card
-        await assembleCard(
-            card.name,
-            {
-                template: cardImage,
-                text: scrapeCard,
-                image: imageArt
-            });
-    });
+    const failed = results.filter(result => result.error).map(result => result.entry.name);
+    console.log(`Done: ${entries.length - failed.length}/${entries.length} cards generated.`);
+    if (failed.length > 0) {
+        console.log(`Failed: ${failed.join(', ')}`);
+        process.exitCode = 1;
+    }
 }
 
 main().catch(console.error);

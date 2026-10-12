@@ -1,17 +1,10 @@
-
 import fs from 'fs';
+import { parseCardList } from '../cardList';
 
-const readCardsFile = async () => {
-    const file = fs.readFileSync('src/entry.txt', 'utf8');
-
-    // Split into lines, filter out empty ones
-    const items = file
-        .split("\n")
-        .map(line => line.trim())
-        .filter(line => line.length > 0);
-
-    console.log(items)
-    return items
+const readCardsFile = async (path = 'src/entry.txt') => {
+    const entries = parseCardList(fs.readFileSync(path, 'utf8'));
+    console.log(entries.map(entry => entry.name));
+    return entries;
 }
 
 export default readCardsFile

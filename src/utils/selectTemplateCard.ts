@@ -1,11 +1,9 @@
 import fs from 'fs';
+import path from 'path';
+import { RenderJob, templateFile } from '../frames';
 
-const selectTemplateCard = async (type: string) => {
-    if (type.includes('Creature')) {
-        return fs.readFileSync('./src/templates/creature_layout.png');
-    } else {
-        return fs.readFileSync('./src/templates/general_layout.png');
-    }
+const selectTemplateCard = async (job: RenderJob) => {
+    return fs.readFileSync(path.join('./src/templates', templateFile(job)));
 }
 
 export default selectTemplateCard

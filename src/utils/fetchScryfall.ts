@@ -1,40 +1,28 @@
 import axios from "axios";
-import Card from "../types/Card";
+import ScryfallCard from "../types/ScryfallCard";
 
-const fetchScryfall = async (cardName: string): Promise<Card> => {
+const named = async (mode: "exact" | "fuzzy", cardName: string) => {
+    const response = await axios.get<ScryfallCard>(`https://api.scryfall.com/cards/named?${mode}=${encodeURIComponent(cardName)}`);
+    return response.data;
+};
+
+const isNotFound = (error: unknown) => axios.isAxiosError(error) && error.response?.status === 404;
+
+// Card Conjurer's importer does the text formatting, so the raw Scryfall object is passed along
+const fetchScryfall = async (cardName: string): Promise<ScryfallCard> => {
     try {
-        const response = await axios.get(`https://api.scryfall.com/cards/named?exact=${encodeURIComponent(cardName)}`);
-
-        const card: Card = {
-            name: response.data.name,
-            mana_cost: response.data.mana_cost,
-            type_line: response.data.type_line,
-            oracle_text: formatRulesText(response.data.oracle_text),
-            power: response.data.power || "",
-            toughness: response.data.toughness || "",
-            set: response.data.set,
-            image_uris: { art_crop: response.data.image_uris.art_crop },
-        };
-
-        return card;
+        return await named("exact", cardName);
     } catch (error) {
-        console.error("Error fetching card:", error);
+        if (!isNotFound(error)) throw error;
+    }
+
+    // Tolerate typos and partial names ("jace mind sculptor")
+    try {
+        return await named("fuzzy", cardName);
+    } catch (error) {
+        if (isNotFound(error)) throw new Error(`Card not found on Scryfall: "${cardName}"`);
         throw error;
     }
 }
-
-const formatRulesText = (text: string): string => {
-    // 1️⃣ Replace ( with {i}(
-    text = text.replace(/\(/g, '{i}(');
-
-    // 2️⃣ Replace ) with ){/i}
-    text = text.replace(/\)/g, '){/i}');
-
-    // 3️⃣ Format ability names between \n and —
-    // Example: "\nEquip—" → "\n{i}Equip{/i}—"
-    //text = text.replace(/\n([\w\s]+?)—/g, '\n{i}$1{/i}—');
-
-    return text;
-};
 
 export default fetchScryfall
